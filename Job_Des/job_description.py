@@ -8,8 +8,7 @@ import warnings
 def warning(*args, **kwargs):
     pass  # Suppress all warnings
 warnings.warn = warning
-#os.environ['API_KEY'] = 'AIzaSyCxC5BxwGAcXumrtCD9U24_h1EehOtsfDY'
-genai.configure(api_key="AIzaSyCxC5BxwGAcXumrtCD9U24_h1EehOtsfDY")
+genai.configure(api_key="Enter Your Gemini API Key")
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 def generate_job_description1(job_title, company_name, experience_required, required_technologies):
