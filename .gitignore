@@ -1,0 +1,21 @@
+# Byte-compiled / cache
+__pycache__/
+*.pyc
+
+# Environment
+env/
+.venv/
+.env
+
+# Django-specific
+*.db
+
+# Your Django app
+/myapp/
+
+# VS Code config
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

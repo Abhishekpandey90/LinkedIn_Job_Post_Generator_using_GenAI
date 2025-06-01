@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Description Generator</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+background-color: #f9fafb;
+padding: 20px;
+}
+
+.container {
+max-width: 1200px;
+margin: 0 auto;
+display: flex;
+gap: 20px;
+}
+
+.column {
+flex: 1;
+background-color: #ffffff;
+padding: 20px;
+border: 1px solid #ddd;
+border-radius: 8px;
+}
+
+label {
+display: block;
+font-weight: bold;
+margin-bottom: 5px;
+}
+
+input,
+select,
+textarea,
+button {
+width: 100%;
+margin-bottom: 15px;
+padding: 10px;
+border: 1px solid #ccc;
+border-radius: 5px;
+font-size: 14px;
+}
+
+button {
+background-color: #007bff;
+color: white;
+border: none;
+cursor: pointer;
+font-weight: bold;
+}
+
+button:hover {
+background-color: #0056b3;
+}
+
+button:disabled {
+background-color: #cccccc;
+cursor: not-allowed;
+}
+
+textarea:disabled {
+background-color: #f0f0f0;
+cursor: not-allowed;
+}
+
+.loader {
+display: flex;
+align-items: center;
+justify-content: center;
+height: 200px;
+}
+
+.spinner {
+border: 4px solid #f3f3f3;
+border-top: 4px solid #007bff;
+border-radius: 50%;
+width: 30px;
+height: 30px;
+animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+from {
+transform: rotate(0deg);
+}
+to {
+transform: rotate(360deg);
+}
+}
+/* Add CSS styles for the button and tooltip here */
+.three-dots {
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    margin-right: 5px;
+}
+
+.three-dots span {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    background-color: #0f0f0f;
+    border-radius: 30%;
+    margin: 0 1px;
+}
+
+.tooltip {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #0e0808;
+    padding: 8px 12px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.three-dots:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+.api-selector {
+    position: relative;
+}
+
+.dropdown {
+    display: none; /* Initially hidden */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #0a0a0a;
+    border: 1px solid #201818;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.three-dots:hover + .dropdown,
+.dropdown.active {
+    display: block; /* Show dropdown on hover or when active */
+}
+
+#apiKeyInput {
+    margin-top: 10px;
+    width: 100%;
+    padding: 5px;
+}
+  </style>
+</style>
+</head>
+<body>
+
+<div class="container">
+<!-- Job Description Generator -->
+<div class="column">
+<h1>Job Description Generator</h1>
+<form id="jobForm">
+  {% csrf_token %}
+<label for="jobTitle">Job Title</label>
+<input
+type="text"
+id="jobtitle"
+name="jobtitle"
+placeholder="Job Title"
+required
+/>
+
+<label for="company">Company Name</label>
+<input
+type="text"
+id="company"
+name="company"
+placeholder="Company Name"
+required
+/>
+
+<label for="experience">Experience</label>
+<input
+type="number"
+id="experience"
+name="experience"
+placeholder="Experience"
+required
+/>
+
+<label for="industry">Technology</label>
+<input
+type="num"
+id="technology"
+name="technology"
+placeholder="Technology (Optional)"
+/>
+<button class="three-dots">
+    <span></span>
+    <span></span>
+    <span></span>
+    <div class="tooltip">Select your API Key</div>
+</button>
+<div class="dropdown">
+    <select id="apiSelect">
+        <option value="" disabled selected>Select an API</option>
+        <option value="openai">Open AI API</option>
+        <option value="gemini">Gemini API</option>
+        <option value="lama">Lama API</option>
+    </select>
+    <div id="apiKeyInputContainer" style="display: none;">
+        <input type="text" id="apiKeyInput" placeholder="Enter your API Key" />
+        <button id="submitApiKey">Submit</button>
+    </div>
+</div>
+<button type="submit" id="generateButton">Generate Job Description</button>
+</form>
+</div>
+
+<!-- AI Generated Job Description -->
+<div class="column">
+<h2>AI Generated Job Description</h2>
+<div id="outputContainer" class="loader">
+</div>
+<div
+id="output"
+placeholder="AI Generated Job Description"
+disabled
+style="display: none;"
+></div>
+<button id="copyButton" disabled style="display: none;">Copy to Clipboard</button>
+</div>
+</div>
+
+<script>
+function getCSRFToken() {
+let csrfToken = null;
+const csrfCookie = document.cookie.split(";").find(cookie => cookie.trim().startsWith("csrftoken="));
+if (csrfCookie) {
+csrfToken = csrfCookie.split("=")[1];
+}
+return csrfToken;
+}
+
+const jobForm = document.getElementById("jobForm");
+const jobtitle = document.getElementById("jobtitle");
+const technology = document.getElementById("technology");
+const experience = document.getElementById("experience");
+const company = document.getElementById("company");
+const outputTextarea = document.getElementById("output");
+const generateButton = document.getElementById("generateButton");
+const copyButton = document.getElementById("copyButton");
+const outputContainer = document.getElementById("outputContainer");
+
+let isGenerating = false;
+
+jobForm.addEventListener("submit", async (e) => {
+e.preventDefault();
+if (isGenerating) return;
+
+isGenerating = true;
+generateButton.textContent = "Generating...";
+generateButton.disabled = true;
+
+// Show loader
+outputContainer.innerHTML = '<div id="loader" class="spinner"></div>';
+outputTextarea.style.display = "none";
+copyButton.style.display = "none";
+
+// Perform AJAX call
+const apiUrl = "{% url 'job' %}"
+const requestBody = {
+jobtitle: jobtitle.value,
+technology: technology.value,
+experience: experience.value,
+company: company.value,
+};
+
+const csrfToken = getCSRFToken();
+
+try {
+
+const response = await fetch(apiUrl, {
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+"X-CSRFToken": csrfToken,
+},
+body: JSON.stringify(requestBody),
+});
+
+if (response.ok) {
+const data = await response.json();
+const jobDescription = data.job_description || "No description available.";
+// Show generated job description
+outputTextarea.innerHTML = marked.parse(jobDescription);
+outputContainer.style.setProperty("display", "none", "important");
+outputContainer.innerHTML = "";
+outputTextarea.style.display = "block";
+copyButton.style.display = "block";
+copyButton.disabled = false;
+} else {
+throw new Error("Failed to generate job description.");
+}
+} catch (error) {
+outputContainer.innerHTML = "<p style='color: red;'>Error generating description.</p>";
+} finally {
+isGenerating = false;
+generateButton.textContent = "Generate Job Description";
+generateButton.disabled = false;
+}
+});
+
+copyButton.addEventListener("click", () => {
+navigator.clipboard.writeText(marked.parse(outputTextarea.innerHTML));
+copyButton.textContent = "Copied!";
+setTimeout(() => (copyButton.textContent = "Copy to Clipboard"), 2000);
+});
+</script>
+</body>
+</html>
